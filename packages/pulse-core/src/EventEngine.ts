@@ -10,6 +10,8 @@ import type {
   EngineStatus,
   Network,
   NormalizedEvent,
+  OfferEvent,
+  OfferEventType,
   PaymentEvent,
   PaymentEventType,
   ReconnectConfig,
@@ -27,7 +29,8 @@ type NormalizedEventOrPending =
   | AccountOptionsEvent
   | AccountCreatedEvent
   | TrustlineEvent
-  | AccountMergeEvent;
+  | AccountMergeEvent
+  | OfferEvent;
 
 type StreamCallbacks = {
   onmessage: (record: unknown) => void;
@@ -323,6 +326,10 @@ export class EventEngine {
       return this.normalizeCreateAccount(r, record);
     }
 
+    if (r.type === "manage_sell_offer" || r.type === "manage_buy_offer") {
+      return this.normalizeOffer(r, record);
+    }
+
     if (r.type === "change_trust") {
       return this.normalizeChangeTrust(r, record);
     }
@@ -338,6 +345,49 @@ export class EventEngine {
     }
 
     return null;
+  }
+
+  private normalizeOffer(
+    r: Record<string, unknown>,
+    raw: unknown
+  ): OfferEvent | null {
+    if (typeof r.source_account !== "string" || typeof r.created_at !== "string") {
+      return null;
+    }
+
+    const offer_id = String(r.offer_id ?? "0");
+    const amount = String(r.amount ?? "0");
+
+    let type: OfferEventType;
+    if (amount === "0" || amount === "0.0000000") {
+      type = "offer.deleted";
+    } else if (offer_id === "0") {
+      type = "offer.created";
+    } else {
+      type = "offer.updated";
+    }
+
+    const buying_asset =
+      r.buying_asset_type === "native"
+        ? "XLM"
+        : `${r.buying_asset_code as string}:${r.buying_asset_issuer as string}`;
+
+    const selling_asset =
+      r.selling_asset_type === "native"
+        ? "XLM"
+        : `${r.selling_asset_code as string}:${r.selling_asset_issuer as string}`;
+
+    return {
+      type,
+      offer_id,
+      source: r.source_account,
+      buying_asset,
+      selling_asset,
+      amount,
+      price: r.price as string,
+      timestamp: r.created_at,
+      raw,
+    };
   }
 
   private normalizeCreateAccount(
@@ -489,6 +539,19 @@ export class EventEngine {
       const watcher = this.registry.get(event.source);
       if (watcher && this.passesFilter(event.source, event)) {
         watcher.emit("account.options_changed", event);
+        watcher.emit("*", event);
+      }
+      return;
+    }
+
+    if (
+      event.type === "offer.created" ||
+      event.type === "offer.updated" ||
+      event.type === "offer.deleted"
+    ) {
+      const watcher = this.registry.get(event.source);
+      if (watcher && this.passesFilter(event.source, event)) {
+        watcher.emit(event.type, event);
         watcher.emit("*", event);
       }
       return;

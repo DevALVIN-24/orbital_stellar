@@ -26,6 +26,8 @@ export type WatcherNotificationType =
   | "engine.reconnecting"
   | "engine.reconnected";
 
+export type OfferEventType = "offer.created" | "offer.updated" | "offer.deleted";
+
 /**
  * Represents a signer in Stellar account options.
  */
@@ -95,6 +97,18 @@ export type AccountOptionsEvent = {
   raw: unknown;
 };
 
+export type OfferEvent = {
+  type: OfferEventType;
+  offer_id: string;
+  source: string;
+  buying_asset: string;
+  selling_asset: string;
+  amount: string;
+  price: string;
+  timestamp: string;
+  raw: unknown;
+};
+
 /**
  * A normalized account creation event from the Stellar network.
  */
@@ -155,7 +169,8 @@ export type NormalizedEvent =
   | AccountOptionsEvent
   | AccountCreatedEvent
   | TrustlineEvent
-  | AccountMergeEvent;
+  | AccountMergeEvent
+  | OfferEvent;
 
 /**
  * A notification emitted by the EventEngine during reconnection attempts.
