@@ -1,8 +1,13 @@
 # @orbital/server
 
-**Reference Express server for Orbital.** Combines `pulse-core`, `pulse-webhooks`, and an HTTP API into a single process you can deploy, fork, or use as the canonical example of how the packages fit together.
+**Reference Express server for Orbital.** Combines `pulse-core`, `pulse-webhooks`, and an HTTP API into a single process so you can see how the SDK packages fit together end-to-end.
 
-This is the binary that a self-hoster runs. Everything else in Orbital is a library.
+This is a **worked example**, not Orbital's production hosting story. For production you have two paths:
+
+- **Build your own backend** — install `@orbital/pulse-core` and `@orbital/pulse-webhooks` into your existing Node.js or edge service. Use this server's source as a reference for how the pieces compose.
+- **Use Orbital Cloud (in development)** — managed runtime that handles multi-region orchestration, persistent webhook registries, replay, and observability.
+
+The reference server is single-tenant, single-process, and in-memory. Treat it as a starting point for learning or local prototyping, not as production infrastructure.
 
 ## Endpoints
 

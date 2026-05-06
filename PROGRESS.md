@@ -1,15 +1,18 @@
 # Orbital: Progress & Status Report
 
-**Last Updated:** April 28, 2026  
-**Project Status:** Phase 0 Foundation — Complete ✅
+**Last Updated:** 2026-05-07
+**Project Status:** Phase 0 (SDK Foundation) — Complete ✅
+**Next Milestone:** Phase 1 — Production-grade `v1.0` (Q2–Q3 2026)
 
 ---
 
 ## Executive Summary
 
-Orbital is a **real-time event infrastructure platform for the Stellar network**. It bridges Stellar's raw Horizon and Soroban RPC APIs with production-grade event streaming, webhook delivery, and React integration.
+Orbital is **Stellar's open-source real-time event SDK family** — three MIT-licensed packages on npm that give any Stellar developer typed event subscriptions, signed webhook delivery, and React hooks without re-implementing the plumbing.
 
-**Current Status:** Phase 0 (Foundation) is complete. All core infrastructure is built, tested, and ready for self-hosting and adoption. Phase 1 (Production-grade Core) begins Q2 2026.
+**Current Status:** Phase 0 (Foundation) is complete. The full classic operation taxonomy is shipped, edge-runtime webhook verification works on Cloudflare Workers and Vercel Edge, and React hooks are in production-shape. Phase 1 (Soroban event subscription, ABI registry, `v1.0` stability pledge, npm publish) begins Q2 2026.
+
+**OSS posture:** SDKs are MIT and free indefinitely. Production hosting is the separately-built **Orbital Cloud** managed runtime, in development. Until Cloud ships, the SDKs run great in any Node.js or edge backend you operate.
 
 ---
 
@@ -17,18 +20,22 @@ Orbital is a **real-time event infrastructure platform for the Stellar network**
 
 ### Phase 0 — Foundation ✅
 
-This phase established a working, self-hostable event stack that any Stellar developer can run today. All deliverables are complete:
+All three packages are feature-complete for Phase 0 scope and ready for use against testnet today:
 
 | Component | Status | Details |
 |---|---|---|
-| Classic payment event streaming via Horizon SSE | ✅ Done | Full Horizon subscription, automatic reconnection, backoff |
-| HMAC-signed webhook delivery with retry | ✅ Done | Delivery pipeline, retry logic, timeout/SSRF protection |
-| React hooks (`useStellarEvent`, `useStellarPayment`, `useStellarActivity`) | ✅ Done | First-class React integration via `@orbital/pulse-notify` |
-| Reference Express server (`apps/server`) | ✅ Done | Full working reference implementation with API endpoints |
-| Public documentation site (`apps/web`) | ✅ Done | Next.js-based docs, guides, and SDK ecosystem reference |
-| Testnet + mainnet support | ✅ Done | Full network selector, environment configuration |
-| CI/CD pipeline | ✅ Done | GitHub Actions, automated testing, CodeQL security scanning |
-| MIT License & open-source setup | ✅ Done | Full license, CONTRIBUTING guide, security policy |
+| Classic operation event streaming via Horizon SSE | ✅ Done | Horizon subscription, automatic reconnection with AWS Full Jitter backoff |
+| Full classic operation taxonomy | ✅ Done | Payments (received/sent/self), account create/merge/bump-sequence, trustlines (change/allow/set_flags), DEX offers (created/updated/deleted), claimable balances (created/claimed), liquidity pools (deposit/withdraw), `manage_data` (set/cleared) |
+| HMAC-signed webhook delivery | ✅ Done | Retry, exponential backoff, concurrent-retry caps, configurable timeout |
+| Edge-runtime webhook verification | ✅ Done | `verifyWebhookEdge` for Cloudflare Workers and Vercel Edge (Web Crypto API) |
+| React hooks (`useStellarEvent`, `useStellarPayment`, `useStellarActivity`) | ✅ Done | Type-narrowing generic on `useStellarEvent`, multi-event subscription, stable config rules |
+| Custom Horizon URL override | ✅ Done | `CoreConfig.horizonUrl` for self-hosted nodes / regional mirrors / futurenet |
+| Engine lifecycle notifications | ✅ Done | `engine.reconnecting`, `engine.reconnected`, `engine.rate_limited`, `engine.stopped` |
+| Public marketing + documentation site (`apps/web`) | ✅ Done | Next.js, Tailwind CSS 4, full docs and live demos |
+| Reference server (`apps/server`) | ✅ Done | Express composition of `pulse-core` + `pulse-webhooks` — a worked example, not a production pitch |
+| Testnet + mainnet support | ✅ Done | Network selector via `network: "mainnet" \| "testnet"` |
+| CI/CD pipeline | ✅ Done | GitHub Actions on Node 20 and 22, CodeQL, Dependabot |
+| MIT License & open-source setup | ✅ Done | `LICENSE`, `CONTRIBUTING.md`, `SECURITY.md` |
 
 ---
 
@@ -36,352 +43,171 @@ This phase established a working, self-hostable event stack that any Stellar dev
 
 ```
 orbital_stellar/
-├── packages/              # Core library packages
-│   ├── pulse-core/        # Event engine + Watcher
-│   ├── pulse-webhooks/    # HMAC webhook delivery
-│   └── pulse-notify/      # React hooks integration
+├── packages/              # MIT-licensed SDKs published to npm
+│   ├── pulse-core/        # Event engine — Horizon + Soroban subscription
+│   ├── pulse-webhooks/    # HMAC webhook delivery + verification
+│   └── pulse-notify/      # React hooks
 ├── apps/
-│   ├── server/            # Reference Express server
-│   └── web/               # Next.js docs & marketing site
-├── README.md              # Main project README
-├── ROADMAP.md             # Multi-year feature roadmap
-├── CONTRIBUTING.md        # Contribution guidelines
-├── SECURITY.md            # Security policy & vulnerability disclosure
-└── LICENSE                # MIT license
+│   ├── server/            # Reference Express composition (development example)
+│   └── web/               # Marketing + documentation site (deployed to Vercel)
+├── docs/
+│   └── proposal.md        # SCF Infrastructure Grant proposal
+├── README.md              # Project overview
+├── ROADMAP.md             # Multi-year vision
+├── CHANGELOG.md           # Release notes (rolls up per-package changelogs)
+├── CONTRIBUTING.md        # Setup, coding standards, PR process, Drips Wave
+├── SECURITY.md            # Vulnerability disclosure policy
+└── LICENSE                # MIT
 ```
 
 ---
 
-## Core Packages & Features
+## Core Packages
 
-### 1. **`@orbital/pulse-core`** — Event Engine
+### 1. `@orbital/pulse-core` — Event Engine
 
-**What It Does:**
-- Connects to Stellar Horizon (classic operations) and Stellar RPC (Soroban events)
-- Subscribes to live SSE streams for account activity
-- Normalizes raw blockchain data into typed, application-friendly events
-- Manages automatic reconnection and backoff
-- Provides pub/sub watcher pattern for subscriptions
+Subscribes to Horizon SSE, normalizes raw operations into a typed `NormalizedEvent` taxonomy, and routes them to per-address `Watcher` instances. Handles reconnection, backoff, and rate-limit responses automatically.
 
-**Key Classes:**
-- `EventEngine` — Main orchestrator for event subscription and delivery
-- `Watcher` — Per-account subscription handler
-- Event normalization layer for Horizon + RPC payloads
+**Status:** Production-ready for Phase 0 scope (full classic operation taxonomy). Soroban event subscription is Phase 1.
 
-**Test Coverage:**
-- Unit tests for core engine behavior
-- Integration tests with real Horizon testnet API
+See [`packages/pulse-core/README.md`](./packages/pulse-core/README.md) for the API and [`packages/pulse-core/CHANGELOG.md`](./packages/pulse-core/CHANGELOG.md) for the per-feature commit trail.
 
-**Status:** Production-ready for Phase 0 scope (classic payments)
+### 2. `@orbital/pulse-webhooks` — Webhook Delivery
 
----
+Attaches to a `Watcher` and POSTs every event to one or more endpoints with HMAC-SHA256 signing, exponential backoff retry, configurable timeout, and SSRF hardening. `verifyWebhook` (Node) and `verifyWebhookEdge` (Web Crypto) are exported for the receiver side.
 
-### 2. **`@orbital/pulse-webhooks`** — Webhook Delivery
+**Status:** Production-ready for Phase 0 scope.
 
-**What It Does:**
-- Delivers events as HMAC-signed HTTP POST requests
-- Implements exponential backoff + retry logic
-- Protects against SSRF, timeout, and delivery failures
-- Validates webhook URLs before registration
-- Signs payloads with `X-Orbital-Signature` header
+See [`packages/pulse-webhooks/README.md`](./packages/pulse-webhooks/README.md).
 
-**Features:**
-- Configurable retry attempts and backoff strategy
-- Timeout protection (default 30s per request)
-- SSRF hardening (blocks private IP ranges in early phase)
-- Replay capability for failed deliveries (Phase 1)
+### 3. `@orbital/pulse-notify` — React Hooks
 
-**Test Coverage:**
-- Unit tests for delivery pipeline
-- HMAC signature validation tests
+Browser-side React hooks (`useStellarEvent`, `useStellarPayment`, `useStellarActivity`) that open an SSE connection to your Orbital-powered backend and re-render on each event. Generic type narrowing supported on `useStellarEvent<T>`.
 
-**Status:** Production-ready for Phase 0 scope
+**Status:** Production-ready for Phase 0 scope.
+
+See [`packages/pulse-notify/README.md`](./packages/pulse-notify/README.md).
 
 ---
 
-### 3. **`@orbital/pulse-notify`** — React Hooks
+## Reference Implementation: `apps/server`
 
-**What It Does:**
-- Exports React hooks for live Stellar event subscriptions in frontend applications
-- Integrates with `pulse-core` for SSE streaming
-- Manages hook lifecycle, reconnection, and error states
+`apps/server` is a working Express composition of `pulse-core` + `pulse-webhooks` — a fork-and-modify starting point for teams who want to see the SDKs wired together end-to-end. It is **not** Orbital's production hosting story.
 
-**Available Hooks:**
-- `useStellarEvent()` — Subscribe to any account event
-- `useStellarPayment()` — Subscribe to payment-specific events
-- `useStellarActivity()` — Subscribe to account activity stream
+For production, you have two paths:
 
-**Features:**
-- Automatic SSE reconnection
-- Loading/error states
-- TypeScript-first design
-- Works with Next.js, Create React App, and Vite
-
-**Status:** Ready for Phase 0 scope
-
----
-
-### 4. **`apps/server`** — Reference Express Server
-
-**What It Does:**
-- Reference implementation combining all three packages
-- HTTP REST API for webhook registration and event retrieval
-- Server-Sent Events (SSE) endpoint for live streaming
-- API key authentication
-
-**Endpoints:**
-- `POST /webhooks/register` — Register address → webhook URL mapping
-- `DELETE /webhooks/:address` — Unregister webhook
-- `GET /webhooks` — List all registered webhooks
-- `GET /webhooks/:address` — Get specific registration
-- `GET /events/:address` — Live SSE stream
-- `GET /health` — Liveness probe
-
-**Features:**
-- Express.js HTTP server
-- Environment-based configuration (NETWORK, API_KEY, PORT)
-- TypeScript for type safety
-- CLI for local development (`dev` script)
-
-**Deployment:** Ready for self-hosting. Can be forked, modified, or deployed to Heroku, Railway, Render, or Docker.
-
-**Status:** Working reference implementation
-
----
-
-### 5. **`apps/web`** — Documentation & Marketing Site
-
-**What It Does:**
-- Public-facing Next.js website and documentation portal
-- API documentation for all three packages
-- Getting started guides, integration tutorials
-- Live demo components
-- Full-text search over documentation
-
-**Pages:**
-- `/` — Home page with hero, value prop, architecture diagram
-- `/docs` — Full documentation tree
-- `/docs/getting-started/introduction` — Project overview
-- `/docs/getting-started/installation` — Setup guide
-- `/docs/getting-started/quick-start` — First-event quickstart
-- `/docs/guides/*` — Deep-dive guides (webhooks, real-time events, etc.)
-- `/docs/api/*` — API reference for each package
-
-**Components:**
-- `Hero`, `HowItWorks`, `SDKEcosystem` — Marketing sections
-- `CodeSnippet`, `CodeSection` — Syntax-highlighted code
-- `DocNavbar`, `DocSidebar`, `TableOfContents` — Documentation chrome
-- `SearchDialog` — Full-text search over `.md` content
-- `AIPanel` — AI assistant for docs (extensible)
-- `LiveDemo`, `WebhookDemo` — Interactive demos
-
-**Tech Stack:**
-- Next.js 16 (App Router)
-- React 19
-- Tailwind CSS 4
-- Framer Motion (animations)
-- TypeScript
-- Markdown rendering (`marked`, `gray-matter`)
-
-**Status:** Live documentation site; marketing and educational content complete
+1. **Build your own backend** — install the SDKs, wire them into your existing Node.js or edge worker, deploy on the infrastructure you already operate.
+2. **Use Orbital Cloud (in development)** — managed runtime that handles multi-region orchestration, persistent webhook registries, replay, and observability. Out of scope for this repository.
 
 ---
 
 ## Development Setup
 
 ### Prerequisites
-- Node.js 18+
-- pnpm 10.32.1 (workspace package manager)
+- Node.js 20 or 22 (both tested in CI)
+- pnpm 10 — `npm install -g pnpm@10`
 
 ### Install & Run
 
 ```bash
-# Install all dependencies
 pnpm install
-
-# Build all packages
-pnpm build
-
-# Run all tests
+pnpm -r typecheck
 pnpm test
 
 # Run integration tests (requires INTEGRATION_TESTS=true)
 pnpm test:integration
 
-# Run web dev server (documentation)
-pnpm --filter @orbital/web dev
+# Run docs site
+pnpm --filter orbital/web dev
 
-# Run reference server locally
+# Run reference server
 NETWORK=testnet API_KEY=dev-key pnpm --filter @orbital/server dev
 ```
-
-### Project Commands
-
-| Command | Purpose |
-|---|---|
-| `pnpm build` | Compile TypeScript → JavaScript in all packages |
-| `pnpm test` | Run unit tests across all packages (Vitest) |
-| `pnpm test:integration` | Run integration tests (requires env flag) |
-| `pnpm --filter @orbital/web dev` | Start Next.js dev server on port 3000 |
-| `pnpm --filter @orbital/server dev` | Start Express server (requires NETWORK + API_KEY env) |
 
 ---
 
 ## Architecture
 
 ```
-┌──────────────────────────────────────────────────────────┐
-│  Stellar Network  (Horizon REST + Stellar RPC)           │
-└─────────────────────┬────────────────────────────────────┘
-                      │  
-                      ├─ Horizon SSE (classic events)
-                      ├─ Horizon REST (polling/backfill)
-                      └─ Stellar RPC (Soroban events)
-                      │
-                      ▼
-┌──────────────────────────────────────────────────────────┐
-│  @orbital/pulse-core (EventEngine)                       │
-│  ├─ HorizonSubscriber (SSE streams)                      │
-│  ├─ RpcSubscriber (contract events)                      │
-│  ├─ Normalization Layer (raw → typed events)             │
-│  ├─ Watcher Registry (per-account pub/sub)               │
-│  └─ Reconnection & Backoff Logic                         │
-└──────┬───────────────────┬────────────────────────────────┘
-       │                   │
-       ▼                   ▼
-┌──────────────────┐  ┌──────────────────────────────────┐
-│ pulse-webhooks   │  │ pulse-notify (React Hooks)       │
-│                  │  │                                  │
-│ • HMAC signing   │  │ • useStellarEvent()              │
-│ • Retry logic    │  │ • useStellarPayment()            │
-│ • Delivery mgmt  │  │ • useStellarActivity()           │
-│ • SSRF hardening │  │ • SSE integration                │
-└──────────────────┘  └──────────────────────────────────┘
-       │                        │
-       │                        │
-       ▼                        ▼
-┌──────────────────┐  ┌──────────────────────────────────┐
-│ @orbital/server  │  │ Client React Apps                │
-│ (Reference impl) │  │                                  │
-│                  │  │ Next.js / React Native / etc     │
-│ • Express.js     │  │ Integrated event subscriptions   │
-│ • REST API       │  │ Real-time UI updates             │
-│ • SSE streaming  │  │                                  │
-│ • Auth layer     │  │                                  │
-└──────────────────┘  └──────────────────────────────────┘
+Stellar Network (Horizon REST/SSE + Stellar RPC)
+        │
+        ▼
+@orbital/pulse-core
+EventEngine · Watcher · Normalization · Reconnect · Backoff
+        │
+   ┌────┴─────────────────┐
+   ▼                      ▼
+@orbital/pulse-webhooks   @orbital/pulse-notify
+HMAC delivery             React hooks (browser SSE)
+SSRF hardening            useStellarEvent
+Edge-runtime verify       useStellarPayment
+                          useStellarActivity
 ```
 
 ---
 
-## Key Capabilities Delivered
-
-### For Backend Developers
-- ✅ Type-safe event engine (`@orbital/pulse-core`)
-- ✅ Production-grade webhook delivery (`@orbital/pulse-webhooks`)
-- ✅ Express.js reference server with REST API
-- ✅ Self-hosting with environment configuration
-- ✅ Full test coverage (unit + integration)
-
-### For Frontend Developers
-- ✅ React hooks for live subscriptions (`@orbital/pulse-notify`)
-- ✅ Automatic SSE reconnection and backoff
-- ✅ TypeScript types for all events
-- ✅ Easy integration into existing React apps
-
-### For Stellar Ecosystem
-- ✅ Single normalized API for Horizon + RPC
-- ✅ HMAC webhook security standard
-- ✅ MIT-licensed, open-source, auditable
-- ✅ Testnet + mainnet support
-- ✅ Documentation and working examples
-
----
-
-## Testing
-
-### Unit Tests
-- **Framework:** Vitest
-- **Coverage:** Core event engine, webhook delivery, React hook behavior
-- **Run:** `pnpm test`
-
-### Integration Tests
-- **Scope:** Real Horizon testnet API calls
-- **Run:** `INTEGRATION_TESTS=true pnpm test:integration`
-- **Note:** Slow and requires network; gated behind env flag
-
-### CI/CD
-- **GitHub Actions** — Runs on every PR and merge
-- **CodeQL** — Automated security scanning
-- **Dependabot** — Automated dependency updates
-
----
-
-## Security & Compliance
+## Security
 
 ### Implemented
-- ✅ HMAC-SHA256 webhook signatures (`X-Orbital-Signature` header)
-- ✅ API key authentication (Bearer token or query param)
-- ✅ SSRF protection (blocks private IP ranges)
-- ✅ Timeout protection on webhook delivery (default 30s)
+- ✅ HMAC-SHA256 webhook signatures (`X-Orbital-Signature`, `X-Orbital-Timestamp`)
+- ✅ Timing-safe HMAC comparison (`crypto.timingSafeEqual` / Web Crypto equivalent)
+- ✅ SSRF protection (private/loopback/link-local IP ranges blocked, DNS rebinding defense)
+- ✅ Per-attempt webhook delivery timeout (default 10s)
+- ✅ Concurrent-retry cap to prevent unbounded memory growth on unreachable endpoints
 - ✅ Security disclosure policy (`SECURITY.md`)
-- ✅ CodeQL static analysis on all PR checks
+- ✅ CodeQL static analysis on every PR
+- ✅ Dependabot for dependency CVE tracking
 
-### Phase 1 Roadmap
-- 🔲 Full SSRF hardening audit
-- 🔲 Dead-letter queue for failed webhooks
-- 🔲 Replay tool + CLI
-- 🔲 HA mode with Redis/etcd leader election
+### Phase 1 Scope
+- 🔲 Cursor persistence (resumable streams)
+- 🔲 Pluggable durable adapters (Redis, Postgres, S3) for replay
+- 🔲 Soroban event subscription via Stellar RPC
+- 🔲 ABI registry client for typed Soroban event decoding
 
 ---
 
-## Known Limitations (Phase 0)
+## Phase 0 Scope Boundaries
 
-This release is feature-complete for Phase 0 scope. Known limitations that are **planned for Phase 1**:
+These are **not** in Phase 0 and are tracked for Phase 1 or later:
 
-1. **Event Types** — Currently handles classic payment events. Full Stellar operation taxonomy coming Q2 2026.
-2. **Storage** — Events are kept in-memory only. PostgreSQL registry coming in Phase 1.
-3. **High Availability** — Single-instance only. HA mode via Redis leader election coming Phase 1.
-4. **Observability** — No Prometheus/OpenTelemetry exporters yet. Phase 1.
-5. **Soroban Events** — Contract event subscriptions not yet implemented. Phase 1.
-6. **Replay** — No replay store or CLI tool. Phase 1.
+1. **Soroban events** — contract event subscription via Stellar RPC. Phase 1.
+2. **Cursor persistence** — resumable streams across process restarts. Phase 1.
+3. **Webhook replay store** — durable retry adapters for Redis/Postgres/S3. Phase 1.
+4. **Production hosting** — multi-region orchestration, persistent registries, leader election. Belongs in **Orbital Cloud** (separate closed product), not in this repository.
+5. **`@orbital/hooks`, `@orbital/payments`, `@orbital/auth`** — Phase 2 SDK family. See [`ROADMAP.md`](./ROADMAP.md).
+6. **`@orbital/x402`, `@orbital/agent-sdk`** — Phase 3. See [`ROADMAP.md`](./ROADMAP.md).
 
 ---
 
 ## Next Steps: Phase 1 (Q2–Q3 2026)
 
-The roadmap for Phase 1 includes:
-
-| Area | Q2 2026 | Q3 2026 |
+| Milestone | Q2 2026 | Q3 2026 |
 |---|---|---|
-| **Events** | Full Stella operation taxonomy | Soroban event subscription |
-| **Storage** | PostgreSQL event registry | Replay store & CLI tool |
-| **Operations** | Dead-letter queue | HA mode (leader election) |
-| **Observability** | Prometheus metrics | OpenTelemetry integration |
-| **Publishing** | npm registry publication | Docker image release |
-| **SDKs** | Starter boilerplates | v1.0 stability pledge + semver |
+| **Events** | Soroban event subscription (Stellar RPC) | ABI registry client for typed decoding |
+| **Types** | Discriminated union refinement (exhaustive `switch`) | — |
+| **Persistence** | Cursor persistence in `pulse-core` | Pluggable replay adapters in `pulse-webhooks` |
+| **Distribution** | Starter boilerplates (`next`, `express`, `anchor`) | npm publish under `@orbital/` |
+| **Stability** | — | `v1.0` stability pledge — semver contract |
 
-See [`ROADMAP.md`](./ROADMAP.md) for the full multi-year vision.
+See [`ROADMAP.md`](./ROADMAP.md) for the full multi-year vision and [`docs/proposal.md`](./docs/proposal.md) for the Phase 1 SCF funding proposal.
 
 ---
 
 ## How to Get Started
 
 ### As a Stellar Developer
-1. Read [Getting Started](./apps/web/app/docs/getting-started/introduction.md)
+1. Read [Getting Started](./apps/web/content/getting-started/introduction.md)
 2. Install: `pnpm add @orbital/pulse-core @orbital/pulse-webhooks @orbital/pulse-notify`
-3. Follow the [Quick Start](./apps/web/app/docs/getting-started/quick-start.md)
-
-### As a Self-Hoster
-1. Fork or clone `apps/server`
-2. Deploy to your infrastructure (Heroku, Railway, Docker, bare metal)
-3. Set `NETWORK` and `API_KEY` environment variables
-4. Point clients at your server URL
+3. Follow the [Quick Start](./apps/web/content/getting-started/quick-start.md)
 
 ### As a Contributor
 1. Read [`CONTRIBUTING.md`](./CONTRIBUTING.md)
-2. Look for [issues tagged `good-first-issue`](https://github.com/orbital/orbital/labels/good-first-issue)
-3. Follow the coding standards and PR process
-4. Run `pnpm test` before submitting
+2. Browse [issues tagged `good-first-issue`](https://github.com/orbital/orbital/labels/good-first-issue) — Drips Wave Program rewards apply
+3. Run `pnpm -r typecheck && pnpm test` before submitting
+
+### As a Funder / Reviewer
+1. Read [`docs/proposal.md`](./docs/proposal.md) for the SCF Infrastructure Grant ask
+2. See [`CHANGELOG.md`](./CHANGELOG.md) for the Phase 0 commit trail
 
 ---
 
@@ -390,44 +216,14 @@ See [`ROADMAP.md`](./ROADMAP.md) for the full multi-year vision.
 | Metric | Status |
 |---|---|
 | Build Status | ✅ Passing |
-| Test Coverage | ✅ Core paths covered |
+| Test Coverage | ✅ Core paths covered; integration tests gated by `INTEGRATION_TESTS=true` |
 | Security Scanning | ✅ CodeQL + Dependabot active |
 | Documentation | ✅ Complete for Phase 0 |
 | License | ✅ MIT |
-| Package.json | ✅ Workspace setup complete |
-
----
-
-## Key Files & Resources
-
-| File | Purpose |
-|---|---|
-| [`README.md`](./README.md) | Main project overview (why, what, quickstart) |
-| [`ROADMAP.md`](./ROADMAP.md) | 4-phase, multi-year development plan |
-| [`CONTRIBUTING.md`](./CONTRIBUTING.md) | Setup, coding standards, PR process |
-| [`SECURITY.md`](./SECURITY.md) | Vulnerability disclosure policy |
-| [`LICENSE`](./LICENSE) | MIT license |
-| [`packages/pulse-core/README.md`](./packages/pulse-core/README.md) | Event engine documentation |
-| [`packages/pulse-webhooks/README.md`](./packages/pulse-webhooks/README.md) | Webhook delivery documentation |
-| [`packages/pulse-notify/README.md`](./packages/pulse-notify/README.md) | React hooks documentation |
-| [`apps/server/README.md`](./apps/server/README.md) | Reference server deployment guide |
-| [`apps/web`](./apps/web) | Full documentation site (Next.js) |
-
----
-
-## Community & Support
-
-- **GitHub Issues** — Bug reports and feature requests
-- **GitHub Discussions** — Questions, ideas, and proposals
-- **Security Issues** — See [`SECURITY.md`](./SECURITY.md) for responsible disclosure
-- **Contributing** — See [`CONTRIBUTING.md`](./CONTRIBUTING.md)
+| Workspace | ✅ pnpm 10 monorepo, Node 20 + 22 in CI |
 
 ---
 
 ## License
 
 MIT — See [`LICENSE`](./LICENSE). Free to use in commercial and open-source projects.
-
----
-
-**Questions or feedback?** Open a GitHub issue or discussion, or reach out to the Orbital team.
