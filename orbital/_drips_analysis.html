@@ -1,0 +1,820 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Orbital Stellar — Drips Funding Analysis</title>
+<style>
+  @page { size: A4; margin: 22mm 18mm 20mm 18mm; }
+  @page :first { margin: 0; }
+
+  :root {
+    --ink:#0d1b2a;
+    --muted:#5b6b7d;
+    --rule:#dde3eb;
+    --bg-soft:#f5f7fb;
+    --accent:#1f5fff;
+    --warn-bg:#fff8e1;
+    --warn-border:#f4b400;
+    --good-bg:#eaf6ee;
+    --good-border:#34a853;
+    --bad-bg:#fdecea;
+    --bad-border:#d93025;
+    --info-bg:#eef3ff;
+    --info-border:#1f5fff;
+    --code:#f3f4f7;
+  }
+
+  * { box-sizing: border-box; }
+  html, body { margin:0; padding:0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+    color: var(--ink);
+    font-size: 10.5pt;
+    line-height: 1.45;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  /* ---------- COVER ---------- */
+  .cover {
+    width: 210mm; height: 297mm;
+    background: linear-gradient(155deg, #0a1428 0%, #0d2548 45%, #0a1c38 100%);
+    color:#fff;
+    padding: 28mm 22mm;
+    page-break-after: always;
+    position: relative;
+  }
+  .cover .marker {
+    font-size: 8.5pt; letter-spacing: 0.25em;
+    color:#9bb4d8;
+    text-transform: uppercase;
+    border-left: 3px solid #4f8cff;
+    padding-left: 10px;
+    margin-bottom: 80mm;
+  }
+  .cover h1 {
+    font-size: 44pt; line-height: 1.05;
+    margin: 0 0 10mm 0; font-weight: 800;
+    letter-spacing:-1px;
+  }
+  .cover h1 .accent { color:#7eb5ff; }
+  .cover .subtitle {
+    font-size: 12pt; color:#cfdcef;
+    max-width: 150mm; line-height: 1.45;
+    margin-bottom: 18mm;
+  }
+  .cover .meta {
+    display: grid; grid-template-columns: repeat(4, 1fr);
+    gap: 6mm 8mm;
+    border-top: 1px solid #34568a;
+    padding-top: 7mm;
+    max-width: 170mm;
+  }
+  .cover .meta .lbl {
+    font-size: 7.5pt; letter-spacing: 0.2em; color:#7d9bc7;
+    text-transform: uppercase; margin-bottom: 2mm;
+  }
+  .cover .meta .val { font-size: 10pt; color:#e7eef9; }
+  .cover .footer {
+    position: absolute; left: 22mm; bottom: 14mm;
+    font-size: 8.5pt; color:#7d9bc7;
+  }
+
+  /* ---------- BODY ---------- */
+  .section-marker {
+    font-size: 8.5pt; letter-spacing: 0.22em;
+    color: var(--accent);
+    text-transform: uppercase;
+    margin-top: 2mm; margin-bottom: 3mm;
+  }
+  h1.section {
+    font-size: 22pt; line-height: 1.15;
+    margin: 0 0 4mm 0;
+    border-bottom: 2px solid var(--ink);
+    padding-bottom: 3mm;
+    font-weight: 800;
+  }
+  h2 {
+    font-size: 13pt; margin: 8mm 0 3mm 0;
+    color: var(--ink); font-weight: 700;
+  }
+  h3 {
+    font-size: 11pt; margin: 6mm 0 2mm 0; font-weight: 700;
+  }
+  p { margin: 0 0 3mm 0; }
+
+  ul, ol { margin: 0 0 3mm 0; padding-left: 5mm; }
+  li { margin-bottom: 1mm; }
+
+  code, .mono {
+    font-family: "SF Mono", "Consolas", "Courier New", monospace;
+    font-size: 9.5pt;
+    background: var(--code);
+    padding: 1px 4px; border-radius: 3px;
+  }
+  pre {
+    background: #0d1b2a; color:#e7eef9;
+    padding: 4mm; border-radius: 3px;
+    font-family: "SF Mono", "Consolas", monospace;
+    font-size: 8.5pt; line-height: 1.5;
+    overflow: hidden;
+    page-break-inside: avoid;
+  }
+
+  /* Callouts */
+  .callout {
+    border-left: 4px solid var(--info-border);
+    background: var(--info-bg);
+    padding: 4mm 5mm;
+    margin: 3mm 0 4mm 0;
+    border-radius: 0 3px 3px 0;
+    page-break-inside: avoid;
+  }
+  .callout.warn { border-color: var(--warn-border); background: var(--warn-bg); }
+  .callout.bad { border-color: var(--bad-border); background: var(--bad-bg); }
+  .callout.good { border-color: var(--good-border); background: var(--good-bg); }
+  .callout .label {
+    font-size: 8pt; letter-spacing: 0.18em; text-transform: uppercase;
+    font-weight: 700; margin-bottom: 2mm;
+    color: var(--ink);
+  }
+
+  /* Tables */
+  table {
+    width: 100%; border-collapse: collapse;
+    margin: 3mm 0 5mm 0;
+    font-size: 9.5pt;
+    page-break-inside: auto;
+  }
+  thead { background: var(--ink); color: #fff; }
+  thead th {
+    text-align: left; padding: 3mm 3mm;
+    font-weight: 600; font-size: 9pt;
+    letter-spacing: 0.05em;
+  }
+  tbody td {
+    padding: 2.5mm 3mm;
+    border-bottom: 1px solid var(--rule);
+    vertical-align: top;
+  }
+  tbody tr:nth-child(even) { background: var(--bg-soft); }
+  td.num { text-align: center; font-weight: 700; width: 8mm; }
+
+  /* Footer */
+  .pagefoot {
+    position: running(footer);
+  }
+  @page :not(:first) {
+    @bottom-left {
+      content: "Orbital Stellar — Drips Funding Analysis";
+      font-family: -apple-system, "Segoe UI", sans-serif;
+      font-size: 7.5pt; color: #7d8b9c;
+    }
+    @bottom-right {
+      content: "Confidential · Internal Use Only";
+      font-family: -apple-system, "Segoe UI", sans-serif;
+      font-size: 7.5pt; color: #7d8b9c;
+    }
+  }
+
+  .pillrow { display: flex; gap: 4mm; margin: 4mm 0; flex-wrap: wrap; }
+  .pill {
+    background: var(--bg-soft);
+    padding: 2mm 4mm;
+    border-radius: 3px;
+    font-size: 9pt;
+    border: 1px solid var(--rule);
+  }
+  .pill strong { color: var(--accent); }
+
+  .twoCol { display: grid; grid-template-columns: 1fr 1fr; gap: 4mm; }
+  .twoCol .box {
+    border: 1px solid var(--rule);
+    padding: 4mm 5mm;
+    border-radius: 3px;
+    page-break-inside: avoid;
+  }
+  .twoCol .box h3 { margin-top: 0; }
+
+  .keep { page-break-inside: avoid; }
+  .pb { page-break-before: always; }
+
+  hr.soft { border: none; border-top: 1px solid var(--rule); margin: 6mm 0; }
+</style>
+</head>
+<body>
+
+<!-- ============ COVER ============ -->
+<div class="cover">
+  <div class="marker">■ Funding Strategy Analysis · April 2026</div>
+  <h1>Orbital <span class="accent">Stellar</span></h1>
+  <div class="subtitle">
+    Drips Funding Correlation, FUNDING.json Explained, and a Verified
+    Comparative Analysis Against Hintents (the $1,500 Reference Project)
+  </div>
+  <div class="meta">
+    <div>
+      <div class="lbl">Prepared</div>
+      <div class="val">April 26, 2026</div>
+    </div>
+    <div>
+      <div class="lbl">Classification</div>
+      <div class="val">Internal — Strategic Planning</div>
+    </div>
+    <div>
+      <div class="lbl">Scope</div>
+      <div class="val">OSS Funding · Repo Hygiene · Drips Pipeline</div>
+    </div>
+    <div>
+      <div class="lbl">Companion to</div>
+      <div class="val">April 14 Report · April 22 Addendum</div>
+    </div>
+  </div>
+  <div class="footer">Orbital Stellar — Drips Funding Analysis · Confidential — Internal Use Only</div>
+</div>
+
+<!-- ============ S0 — CORRECTION & SCOPE ============ -->
+<div class="section-marker">Section 0 · Scope &amp; Correction</div>
+<h1 class="section">Scope &amp; a Correction Up Front</h1>
+
+<p>This document is a working analysis prepared in response to a specific question raised
+by the Orbital founding team: <em>are we building the right artifacts to maximise income
+from the Drips Stellar Wave Program, and what should be open versus closed source given
+the wave issues already drafted?</em></p>
+
+<p>The first deliverable on this engagement included an unverified statistic — that the
+hintents reference repository contained "40 SCF references in <code>docs/proposal.md</code>." On
+direct inspection of the file the actual count is <strong>one</strong> sentence
+mentioning the Stellar Community Fund. The conclusion in the prior memo was therefore
+built on a confabulated correlation. This document supersedes that analysis and is
+based only on facts verified by reading the source files directly.</p>
+
+<div class="callout warn keep">
+  <div class="label">What that correction changes</div>
+  <p>The earlier hypothesis was: <em>"featured repos are featured because they reference
+  SCF/OnlyDust heavily."</em> The verified picture is different — hintents has no
+  FUNDING.json, no OnlyDust references, no Drips file, and exactly one SCF mention. Yet
+  it still received $1,500. The real differentiators are <strong>shipped-product
+  perception</strong> and <strong>documentation density</strong>, not explicit grant-program
+  linkage. The corrected fix list at the end of this document reflects the verified
+  evidence.</p>
+</div>
+
+<h2>What this document covers</h2>
+<ol>
+  <li>How money actually flows from grant programs through Drips to maintainers, with the
+  SCF / OnlyDust / Wave Program relationships clarified.</li>
+  <li>What <code>FUNDING.json</code> is, what it contains, and when (and when not) to add it
+  to a repo.</li>
+  <li>A verified deep dive on hintents — every claim sourced from a file in
+  <code>C:\Users\SAMUEL\Desktop\drips\hintents</code>.</li>
+  <li>A side-by-side comparison of hintents and Orbital across 21 dimensions.</li>
+  <li>A four-tier fixes table prioritising the actions that close the polish gap.</li>
+  <li>A 90-day sequencing plan for executing those fixes.</li>
+</ol>
+
+<!-- ============ S1 — DRIPS ROUTING ============ -->
+<div class="pb"></div>
+<div class="section-marker">Section 1 · Drips Funding Pipeline</div>
+<h1 class="section">How Drips Actually Pays Stellar Projects</h1>
+
+<p>Drips itself is a neutral routing protocol. It does not decide which projects get
+funded — it splits incoming donations according to each recipient's "splits config." The
+interesting question is therefore <em>"who sends money into Drips, and how do they pick
+recipients?"</em></p>
+
+<h2>The flow</h2>
+<pre>Grant pool / SCF awardee / Wave-program treasury / direct sponsor
+        │
+        │  donates to a "Drip List" or to a project's Drips identity
+        ▼
+Drips protocol (smart contract)
+        │
+        │  splits per the recipient's configured splits graph
+        ▼
+Maintainer addresses + dependency graph + listed contributors</pre>
+
+<h2>Money sources on Stellar (in order of materiality)</h2>
+<table>
+  <thead><tr><th style="width:36mm">Source</th><th>How it pays</th><th style="width:32mm">Predicts featured?</th></tr></thead>
+  <tbody>
+    <tr>
+      <td><strong>Stellar Wave Program</strong></td>
+      <td>A Drips-run initiative (the same <code>Stellar Wave</code> label used in <code>WAVE_ISSUES.md</code>) funded with grant money. Issues opted into the program pay contributors per complexity points when merged.</td>
+      <td>Yes — direct.</td>
+    </tr>
+    <tr>
+      <td><strong>OnlyDust</strong></td>
+      <td>A bounty platform that posts and pays contributor tasks; payouts can route through Drips.</td>
+      <td>Strong second-order signal.</td>
+    </tr>
+    <tr>
+      <td><strong>SCF awardees</strong></td>
+      <td>Grant recipients sometimes route a portion of their award through Drips to reward downstream contributors.</td>
+      <td>Indirect — depends on the awardee.</td>
+    </tr>
+    <tr>
+      <td><strong>Direct project sponsors</strong></td>
+      <td>Individual donors topping up a Drip List for a project they like.</td>
+      <td>Marginal in volume.</td>
+    </tr>
+  </tbody>
+</table>
+
+<div class="callout">
+  <div class="label">Corrected mental model</div>
+  <p>Drips' "featured" status is <strong>curatorial</strong>, awarded to repos that look
+  high-quality and shipped. Explicit SCF / OnlyDust integration is one validation path,
+  but it is not necessary. Hintents is featured despite having no explicit OnlyDust or
+  Drips integration anywhere in its repo — the curators picked it up on quality signal
+  alone. That is the path Orbital should optimise for.</p>
+</div>
+
+<h2>What that means for Orbital</h2>
+<p>Two paths to maximising Drips income operate in parallel and are <em>not</em> in
+tension:</p>
+<ol>
+  <li><strong>Be obviously high-quality and shipped.</strong> CHANGELOG with real
+  releases, hosted docs, multi-language sophistication where relevant, an active
+  contributor table. This is the <em>look-the-part</em> half.</li>
+  <li><strong>Activate the contributor flywheel.</strong> Publish the 150 wave issues,
+  apply to OnlyDust, register on Drips. This is the <em>turn-on-the-pipes</em> half.</li>
+</ol>
+
+<!-- ============ S2 — FUNDING.json ============ -->
+<div class="pb"></div>
+<div class="section-marker">Section 2 · FUNDING.json</div>
+<h1 class="section">What <code style="font-size:18pt">FUNDING.json</code> Contains and Means</h1>
+
+<p>This is a Drips-specific manifest distinct from GitHub's <code>.github/FUNDING.yml</code>
+(different schema, different purpose). It lives at the repository root.</p>
+
+<h2>Schema</h2>
+<pre>{
+  "drips": {
+    "&lt;chain-name&gt;": {
+      "ownedBy": "0x&lt;ethereum-style-address&gt;"
+    }
+  }
+}</pre>
+
+<h2>Real examples from the featured cohort</h2>
+<table>
+  <thead>
+    <tr><th style="width:55mm">Repo</th><th style="width:30mm">Chain</th><th>Address</th></tr>
+  </thead>
+  <tbody>
+    <tr><td><code>be-energy</code></td><td>optimism</td><td><code>0x7d012643D8E72994895F826A22E72ca972D576fd</code></td></tr>
+    <tr><td><code>stellar-portfolio-rebalancer</code></td><td>ethereum</td><td><code>0xEFeA3500A667A359B84fc0ce4ba391F3B7761Bb8</code></td></tr>
+  </tbody>
+</table>
+
+<h2>What it does</h2>
+<ul>
+  <li>Declares the canonical Drips recipient address for the repository, on a specific
+  chain (Drips uses Ethereum-style addresses across multiple L2s).</li>
+  <li>When Drips' indexer crawls the repo, this file is the <em>on-repo proof of
+  ownership</em> linking the GitHub repo to a Drips identity.</li>
+</ul>
+
+<h2>What it does <em>not</em> do</h2>
+<ul>
+  <li><strong>Does not unlock funding by itself.</strong> Being featured on Drips is a
+  separate curatorial step; <code>FUNDING.json</code> just enables the routing once
+  funding is sent.</li>
+  <li><strong>Does not improve ranking.</strong> Of 15 featured repos audited in the
+  Stellar cohort, only 2 have one. Hintents has none and still received $1,500.</li>
+  <li><strong>Is not required.</strong> A maintainer can register repo ownership
+  through Drips' web UI without the file. The file is a convenience and a proof, not a
+  prerequisite.</li>
+</ul>
+
+<div class="callout warn keep">
+  <div class="label">When Orbital should add it</div>
+  <p>Only after registering an Orbital recipient on <code>drips.network</code> and
+  obtaining the recipient address. Adding it before that is empty signaling — the file
+  would point to nothing. Skip it for now; revisit after Drips registration is done.</p>
+</div>
+
+<!-- ============ S3 — HINTENTS DEEP DIVE ============ -->
+<div class="pb"></div>
+<div class="section-marker">Section 3 · Hintents Deep Dive</div>
+<h1 class="section">Hintents — Verified Inventory of the $1,500 Reference</h1>
+
+<p>Every claim below is sourced from a file directly inspected in the local hintents
+clone. Items previously asserted on second-hand summaries are explicitly marked
+<strong>verified</strong>; items that the prior memo over-claimed are flagged.</p>
+
+<h2>Real inventory</h2>
+<table>
+  <thead><tr><th style="width:50mm">Dimension</th><th style="width:50mm">Value</th><th>Notes</th></tr></thead>
+  <tbody>
+    <tr>
+      <td>License</td>
+      <td><strong>Apache 2.0</strong></td>
+      <td>Enterprise / infrastructure orientation; differs from MIT-dominant cohort.</td>
+    </tr>
+    <tr>
+      <td>Language stack</td>
+      <td>Go (CLI) + Rust (simulator) via FFI</td>
+      <td>Multi-language sophistication; Rust simulator wraps <code>soroban-env-host</code>.</td>
+    </tr>
+    <tr>
+      <td>Root <code>.md</code> files</td>
+      <td>19</td>
+      <td>IMPLEMENTATION_*, DELIVERY_COMPLETE, PR_MESSAGE_*, MAINTAINER_NEXT_STEPS — visible execution paper trail.</td>
+    </tr>
+    <tr>
+      <td><code>docs/</code> <code>.md</code> files</td>
+      <td>64</td>
+      <td>Architecture, ADRs, integration guides; published to a Mintlify site.</td>
+    </tr>
+    <tr>
+      <td>GitHub workflows</td>
+      <td>12</td>
+      <td>ci, fuzz, dependency-audit, license-audit, strict-lint, all-contributors, changelog, emoji_check, integration, release, ci-standardization, test-cross-platform.</td>
+    </tr>
+    <tr>
+      <td>Issue templates</td>
+      <td>bug_report + feature_request</td>
+      <td>Standard.</td>
+    </tr>
+    <tr>
+      <td>FUNDING.json</td>
+      <td><strong>None</strong></td>
+      <td>Disproves the "FUNDING.json drives featured-status" hypothesis.</td>
+    </tr>
+    <tr>
+      <td>Drips / OnlyDust references</td>
+      <td><strong>Zero</strong></td>
+      <td>Disproves the "explicit-linkage" hypothesis.</td>
+    </tr>
+    <tr>
+      <td>SCF references</td>
+      <td><strong>1 sentence</strong> (proposal.md:38)</td>
+      <td>Stated intent to apply, not evidence of receipt.</td>
+    </tr>
+    <tr>
+      <td><code>.all-contributorsrc</code></td>
+      <td>Yes</td>
+      <td>Auto-generated contributor badge in README; all-contributors workflow active.</td>
+    </tr>
+    <tr>
+      <td>CHANGELOG.md</td>
+      <td>Keep-a-Changelog format</td>
+      <td>Shipped <strong>v2.0.0 on 2026-03-20</strong> with concrete features (Interactive Trace Viewer, Flamegraph, HSM signing).</td>
+    </tr>
+    <tr>
+      <td>Code of Conduct</td>
+      <td>Yes (root)</td>
+      <td>Standard.</td>
+    </tr>
+    <tr>
+      <td>Hosted docs site</td>
+      <td><code>dotandev-hintents-75.mintlify.app</code></td>
+      <td>Linked from README; professional appearance.</td>
+    </tr>
+    <tr>
+      <td>Grant proposals</td>
+      <td><strong>Two</strong> (Infrastructure + RWA tracks)</td>
+      <td>Same project pitched to two different SCF tracks — covers two grant categories.</td>
+    </tr>
+    <tr>
+      <td>Status framing</td>
+      <td>"Phase 4: Advanced Diagnostics"</td>
+      <td>Communicates active execution.</td>
+    </tr>
+    <tr>
+      <td>Pitch register</td>
+      <td>"#1 developer pain point on Stellar"</td>
+      <td>Marketing-grade framing in a docs file; reads like a YC application.</td>
+    </tr>
+  </tbody>
+</table>
+
+<h2>What actually makes hintents stand out</h2>
+<ol>
+  <li><strong>It looks shipped.</strong> v2.0.0 in CHANGELOG with specific release
+  notes. Most "OSS Stellar projects" feel half-built; hintents reads like real
+  software.</li>
+  <li><strong>Multi-language sophistication.</strong> Go-CLI + Rust-simulator via FFI is
+  hard to fake. Curators read this as "real engineering team."</li>
+  <li><strong>Documentation density.</strong> 83 markdown files total, with a hosted
+  Mintlify site. Curators scanning candidates use docs depth as a quality proxy.</li>
+  <li><strong>CI maturity beyond cohort.</strong> Fuzz, license-audit, dependency-audit,
+  all-contributors automation — workflows you only set up if you intend to maintain a
+  project for years.</li>
+  <li><strong>Two-track grant pitching.</strong> Dual <code>proposal.md</code> /
+  <code>proposal2.md</code> targeting two SCF tracks (Infrastructure and Financial
+  Products) from the same codebase.</li>
+  <li><strong>Marketing-grade pitch in a docs file.</strong> Opens with "#1 developer
+  pain point on Stellar" and frames the problem with concrete pain
+  (<code>tx_failed</code> returning <code>Error(WasmVm, InvalidAction)</code>).</li>
+  <li><strong>all-contributors integration.</strong> Public credit table is itself a
+  contributor incentive — Drips/OnlyDust contributors show up there.</li>
+</ol>
+
+<h2>What the prior memo over-claimed</h2>
+<table>
+  <thead><tr><th style="width:65mm">Earlier claim</th><th>Verified reality</th></tr></thead>
+  <tbody>
+    <tr>
+      <td>"40 SCF references in proposal.md"</td>
+      <td>One sentence in proposal.md, line 38; no SCF references anywhere else in the repo.</td>
+    </tr>
+    <tr>
+      <td>"Heavy SCF doc integration"</td>
+      <td>Two grant proposal files exist; only one of them mentions SCF, in one sentence each.</td>
+    </tr>
+    <tr>
+      <td>"Pre-vetted via Stellar's own programs"</td>
+      <td>Unverifiable from repo alone. Repo shows author's <em>intent to apply</em>, not evidence of acceptance.</td>
+    </tr>
+  </tbody>
+</table>
+
+<!-- ============ S4 — COMPARATIVE TABLE ============ -->
+<div class="pb"></div>
+<div class="section-marker">Section 4 · Comparative Analysis</div>
+<h1 class="section">Hintents vs. Orbital — 21 Dimensions</h1>
+
+<table>
+  <thead><tr><th style="width:42mm">Signal</th><th style="width:55mm">Hintents</th><th style="width:55mm">Orbital</th><th>Verdict</th></tr></thead>
+  <tbody>
+    <tr><td>License</td><td>Apache 2.0</td><td>MIT</td><td>Both valid; different audience signals.</td></tr>
+    <tr><td>Language stack</td><td>Go + Rust (FFI)</td><td>TypeScript only</td><td>Hintents.</td></tr>
+    <tr><td>GitHub workflows</td><td>12 (fuzz, license-audit, dep-audit, all-contributors, strict-lint, …)</td><td>7 (build, ci, codeql, integration, release, security, stale)</td><td>Hintents.</td></tr>
+    <tr><td>Issue + PR templates</td><td>bug + feature</td><td>bug + feature + <strong>PR template</strong></td><td><strong>Orbital</strong> (PR template is rare in cohort).</td></tr>
+    <tr><td>CHANGELOG.md</td><td>Keep-a-Changelog, v2.0.0 shipped</td><td>None</td><td>Hintents — decisively.</td></tr>
+    <tr><td>Versioning maturity</td><td>Semver, v2.0.0 (2026-03-20)</td><td>v0.x, no formal release</td><td>Hintents.</td></tr>
+    <tr><td>Root <code>.md</code> count</td><td>19</td><td>5 (README, ROADMAP, CONTRIBUTING, LICENSE, SECURITY)</td><td>Hintents has more (style choice, not necessarily better).</td></tr>
+    <tr><td><code>docs/</code> folder</td><td>64 files</td><td><strong>Does not exist</strong></td><td>Hintents — major gap.</td></tr>
+    <tr><td>Hosted docs site</td><td>Mintlify (live)</td><td>None published</td><td>Hintents.</td></tr>
+    <tr><td>all-contributors</td><td>Yes (.all-contributorsrc + workflow)</td><td>No</td><td>Hintents.</td></tr>
+    <tr><td>Code of Conduct</td><td>Yes</td><td>No</td><td>Hintents.</td></tr>
+    <tr><td>Grant proposal docs</td><td>Two (Infrastructure + RWA)</td><td>None</td><td>Hintents — major gap.</td></tr>
+    <tr><td>Status framing in README</td><td>"Phase 4: Advanced Diagnostics"</td><td>None</td><td>Hintents.</td></tr>
+    <tr><td>Pitch register</td><td>"#1 developer pain point on Stellar"</td><td>"Real-time event infrastructure for the Stellar network"</td><td>Hintents reads as marketing; Orbital reads as docs.</td></tr>
+    <tr><td>Issue plan / Wave issues</td><td>None visible</td><td><strong>150-issue WAVE_ISSUES.md + create-wave-issues.js</strong></td><td><strong>Orbital — decisively</strong>.</td></tr>
+    <tr><td>GitHub Discussions</td><td>Configured (referenced in CONTRIBUTING)</td><td>Mentioned but not configured</td><td>Hintents.</td></tr>
+    <tr><td>Monorepo structure</td><td>Single Go module + simulator subdir</td><td>True monorepo (apps/ + packages/) with pnpm workspaces</td><td><strong>Orbital</strong>.</td></tr>
+    <tr><td>Test infrastructure</td><td>jest + Go tests + integration</td><td>TS tests in each package</td><td>Roughly equal.</td></tr>
+    <tr><td>README badges</td><td>all-contributors badge present</td><td>None</td><td>Hintents.</td></tr>
+    <tr><td>FUNDING.json</td><td>None</td><td>None</td><td>Equal — irrelevant signal.</td></tr>
+    <tr><td>Drips / Wave-Program text in CONTRIBUTING</td><td>None</td><td>"Stellar Wave Program" section present</td><td><strong>Orbital</strong>.</td></tr>
+  </tbody>
+</table>
+
+<div class="callout good keep">
+  <div class="label">Summary verdict</div>
+  <p>Orbital is structurally stronger on architecture and Wave-program engineering (true
+  monorepo, 150 pre-planned issues, automated label/issue creation, native Wave Program
+  section). Hintents is stronger on positioning, polish, and shipped-product perception
+  (CHANGELOG, v2.0.0, hosted docs, all-contributors, two grant proposals, marketing
+  pitch). To a curator looking at both today, hintents looks more <em>"shipped, real,
+  worth featuring."</em> Orbital looks more <em>"well-organised future project that
+  hasn't released yet."</em> That gap is closeable in 1–2 weeks of focused, non-product
+  work.</p>
+</div>
+
+<!-- ============ S5 — FIXES TABLE ============ -->
+<div class="pb"></div>
+<div class="section-marker">Section 5 · Fixes</div>
+<h1 class="section">Prioritised Fixes for Orbital</h1>
+
+<h2>Tier 1 — Perception fixes (close the gap to hintents-tier polish)</h2>
+<table>
+  <thead><tr><th style="width:6mm">#</th><th style="width:50mm">Action</th><th style="width:38mm">Where</th><th style="width:18mm">Effort</th><th>Impact</th></tr></thead>
+  <tbody>
+    <tr>
+      <td class="num">1</td>
+      <td>Create <code>docs/proposal.md</code> framing Orbital for SCF Infrastructure Grants. Cite the 7-day Soroban retention pain, the React-hooks gap, the Horizon→RPC migration overhead. Open with a "#1 developer pain point" sentence.</td>
+      <td><code>docs/proposal.md</code></td>
+      <td>1 day</td>
+      <td>High — directly mirrors hintents' winning artifact.</td>
+    </tr>
+    <tr>
+      <td class="num">2</td>
+      <td>Create <code>docs/proposal2.md</code> framing Orbital for a second SCF track — Financial Products (anchor SDK, x402 agent payments) or Real-World Adoption.</td>
+      <td><code>docs/proposal2.md</code></td>
+      <td>1 day</td>
+      <td>High — covers two grant categories.</td>
+    </tr>
+    <tr>
+      <td class="num">3</td>
+      <td>Add <code>CHANGELOG.md</code> in Keep-a-Changelog format. Tag and release <code>v0.1.0</code> with the current feature set.</td>
+      <td>root + git tag</td>
+      <td>2 hours</td>
+      <td>High — removes the v0.0.0 instability perception.</td>
+    </tr>
+    <tr>
+      <td class="num">4</td>
+      <td>Add <code>CODE_OF_CONDUCT.md</code> (Contributor Covenant 2.1, copy-paste).</td>
+      <td>root</td>
+      <td>15 min</td>
+      <td>Medium — closes a trust-signal gap.</td>
+    </tr>
+    <tr>
+      <td class="num">5</td>
+      <td>Set up <code>.all-contributorsrc</code> and add the all-contributors GitHub Action. Auto-generates contributor table in README.</td>
+      <td>root + workflow</td>
+      <td>2 hours</td>
+      <td>Medium — high-confidence cohort signal.</td>
+    </tr>
+    <tr>
+      <td class="num">6</td>
+      <td>Set up a hosted docs site — Mintlify, Docusaurus, or use existing <code>apps/web</code> with a <code>/docs</code> route filled with structured content. Link the URL from README.</td>
+      <td><code>apps/web</code> or Mintlify</td>
+      <td>1–2 days</td>
+      <td>High — major cohort gap.</td>
+    </tr>
+    <tr>
+      <td class="num">7</td>
+      <td>Add a "Status: Phase 0 — Foundation" line under the README title, mirroring hintents' phase framing.</td>
+      <td><code>README.md</code></td>
+      <td>5 min</td>
+      <td>Low–Medium.</td>
+    </tr>
+    <tr>
+      <td class="num">8</td>
+      <td>Rewrite the README opening sentence in pitch register, not docs register. E.g.: <em>"Stellar's biggest developer-experience gap in 2026 isn't a missing API — it's that Horizon's firehose still requires every team to build their own event delivery."</em></td>
+      <td><code>README.md:3</code></td>
+      <td>30 min</td>
+      <td>Medium.</td>
+    </tr>
+  </tbody>
+</table>
+
+<h2>Tier 2 — Workflow / OSS hygiene additions</h2>
+<table>
+  <thead><tr><th style="width:6mm">#</th><th style="width:50mm">Action</th><th style="width:38mm">Where</th><th style="width:18mm">Effort</th><th>Impact</th></tr></thead>
+  <tbody>
+    <tr>
+      <td class="num">9</td>
+      <td>Add <code>.github/workflows/dependency-audit.yml</code> (npm audit + license check on PRs).</td>
+      <td>workflows</td>
+      <td>1 hour</td>
+      <td>Low.</td>
+    </tr>
+    <tr>
+      <td class="num">10</td>
+      <td>Add <code>.github/workflows/license-audit.yml</code> (validates LICENSE headers across packages).</td>
+      <td>workflows</td>
+      <td>2 hours</td>
+      <td>Low.</td>
+    </tr>
+    <tr>
+      <td class="num">11</td>
+      <td>Enable GitHub Discussions; configure categories (Ideas / Q&amp;A / Show &amp; Tell / Polls). Reference in CONTRIBUTING.md.</td>
+      <td>repo settings + <code>CONTRIBUTING.md</code></td>
+      <td>30 min</td>
+      <td>Medium.</td>
+    </tr>
+    <tr>
+      <td class="num">12</td>
+      <td>Add <code>.github/workflows/strict-lint.yml</code> (ESLint + Prettier strict mode).</td>
+      <td>workflows</td>
+      <td>1 hour</td>
+      <td>Low.</td>
+    </tr>
+    <tr>
+      <td class="num">13</td>
+      <td>Fill in the placeholder <em>(invite link)</em> for Discord, add Twitter / X handle. Empty community section reads as inactive project.</td>
+      <td><code>README.md:102–104</code></td>
+      <td>1 day (incl. Discord setup)</td>
+      <td>Medium.</td>
+    </tr>
+  </tbody>
+</table>
+
+<h2>Tier 3 — Wave program activation (Orbital-specific, no cohort analog)</h2>
+<table>
+  <thead><tr><th style="width:6mm">#</th><th style="width:50mm">Action</th><th style="width:38mm">Where</th><th style="width:18mm">Effort</th><th>Impact</th></tr></thead>
+  <tbody>
+    <tr>
+      <td class="num">14</td>
+      <td><strong>Run <code>node .github/create-wave-issues.js</code></strong> — publishes the 150 issues, creates labels, opens the contributor flywheel.</td>
+      <td>local + GitHub</td>
+      <td>1 hour (rate-limited)</td>
+      <td><strong>Highest single ROI on contributor activity.</strong></td>
+    </tr>
+    <tr>
+      <td class="num">15</td>
+      <td>Apply to OnlyDust as a project (onlydust.com). Reference the published Wave issues.</td>
+      <td>external</td>
+      <td>1 day</td>
+      <td>High.</td>
+    </tr>
+    <tr>
+      <td class="num">16</td>
+      <td>Submit the SCF application using <code>docs/proposal.md</code> as the basis. SCF cycles open quarterly.</td>
+      <td>external</td>
+      <td>2–3 days</td>
+      <td><strong>Highest funding upside.</strong></td>
+    </tr>
+    <tr>
+      <td class="num">17</td>
+      <td>Register an Orbital recipient on <code>drips.network</code>. Obtain the recipient address.</td>
+      <td>external</td>
+      <td>30 min</td>
+      <td>Required for any Drips income.</td>
+    </tr>
+    <tr>
+      <td class="num">18</td>
+      <td>After (17), commit <code>FUNDING.json</code> with the registered Drips address.</td>
+      <td>root</td>
+      <td>5 min</td>
+      <td>Low (signal-only).</td>
+    </tr>
+  </tbody>
+</table>
+
+<h2>Tier 4 — Open / closed source structural moves</h2>
+<table>
+  <thead><tr><th style="width:6mm">#</th><th style="width:50mm">Action</th><th style="width:38mm">Where</th><th style="width:18mm">Effort</th><th>Impact</th></tr></thead>
+  <tbody>
+    <tr>
+      <td class="num">19</td>
+      <td>Stand up a <strong>separate private monorepo</strong> (e.g., <code>orbital-cloud</code> on a private GitHub org). Initial scaffold only — Postgres adapter interface, Express auth middleware shell.</td>
+      <td>new private repo</td>
+      <td>2 days</td>
+      <td>High — the architectural boundary must exist before contributors test it.</td>
+    </tr>
+    <tr>
+      <td class="num">20</td>
+      <td>Add an <code>apps/server/src/registry/</code> interface so the in-memory registry can be replaced with a Postgres adapter from the private repo without forking <code>pulse-core</code>.</td>
+      <td><code>apps/server</code></td>
+      <td>1 day</td>
+      <td>High — extension point per Addendum §7.</td>
+    </tr>
+    <tr>
+      <td class="num">21</td>
+      <td>Document publicly which feature areas are open-source vs Cloud / Rails. A short <code>docs/open-source-policy.md</code> prevents contributors from filing PRs into eventually-closed territory.</td>
+      <td><code>docs/</code></td>
+      <td>2 hours</td>
+      <td>Medium.</td>
+    </tr>
+  </tbody>
+</table>
+
+<!-- ============ S6 — SEQUENCING ============ -->
+<div class="pb"></div>
+<div class="section-marker">Section 6 · Execution Plan</div>
+<h1 class="section">Suggested 90-Day Sequencing</h1>
+
+<table>
+  <thead><tr><th style="width:32mm">Window</th><th style="width:50mm">Theme</th><th>Items</th></tr></thead>
+  <tbody>
+    <tr>
+      <td><strong>Week 1</strong></td>
+      <td>Perception &amp; program activation</td>
+      <td>1, 2, 3, 4, 7, 8, 14, 17 — proposal docs, CHANGELOG, CoC, README rewrite, run the wave-issue creator, register on Drips.</td>
+    </tr>
+    <tr>
+      <td><strong>Week 2</strong></td>
+      <td>Community surface</td>
+      <td>5, 6, 11, 13 — all-contributors, hosted docs site, GitHub Discussions, Discord / Twitter.</td>
+    </tr>
+    <tr>
+      <td><strong>Week 3–4</strong></td>
+      <td>Apply for funding</td>
+      <td>15, 16 — OnlyDust application, SCF application.</td>
+    </tr>
+    <tr>
+      <td><strong>Week 5–6</strong></td>
+      <td>Private repo skeleton + extension points</td>
+      <td>19, 20, 21 — protect the open / closed boundary before any private feature ships.</td>
+    </tr>
+    <tr>
+      <td><strong>Ongoing</strong></td>
+      <td>Hygiene</td>
+      <td>9, 10, 12, 18 — incremental workflow additions, FUNDING.json once the Drips address exists.</td>
+    </tr>
+  </tbody>
+</table>
+
+<h2>The three highest-leverage moves</h2>
+<div class="pillrow">
+  <div class="pill"><strong>#1</strong> &nbsp; Write <code>docs/proposal.md</code></div>
+  <div class="pill"><strong>#14</strong> &nbsp; Run the wave issue creator</div>
+  <div class="pill"><strong>#16</strong> &nbsp; Submit the SCF application</div>
+</div>
+<p>Everything else compounds around these three.</p>
+
+<hr class="soft">
+
+<h2>Closing</h2>
+<p>The earlier "40 SCF references" claim was wrong. The corrected story is more useful:
+hintents wins on shipped-product perception, not on grant-program documentation. Orbital
+is architecturally stronger and operationally further along on the Wave-program
+plumbing. Closing the polish gap is two weeks of non-product work, after which Orbital
+should look objectively better than hintents to any Drips, Wave, or SCF curator
+evaluating both.</p>
+
+<p>The 20-year strategic direction laid out in the April 14 Report and refined in the
+April 22 Addendum remains the load-bearing document for product and monetisation
+decisions. This document is a tactical complement focused on the next 90 days of
+funding-pipeline activation.</p>
+
+</body>
+</html>
