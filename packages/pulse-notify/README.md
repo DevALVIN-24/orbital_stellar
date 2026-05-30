@@ -210,6 +210,20 @@ useStellarEvent(
 
 **Server-only tokens** (secrets) must never ship to the browser. Use a per-user short-lived token issued by your backend.
 
+### Cookie-based auth (withCredentials)
+
+Same-origin `httpOnly` cookies travel automatically with SSE when `withCredentials: true` is set.
+
+```tsx
+useStellarEvent(
+  serverUrl,
+  address,
+  { withCredentials: true }
+);
+```
+
+If the server is cross-origin, it must respond with `Access-Control-Allow-Credentials: true` and an explicit `Access-Control-Allow-Origin` value. Do not use `*` for the origin when credentials are involved.
+
 ## Server-side rendering
 
 The hooks are client-only — they rely on `EventSource`, which does not exist in Node. In Next.js App Router, mark the consuming component with `"use client"`. In Remix or Vite SSR, gate the hook behind a client-only boundary.
