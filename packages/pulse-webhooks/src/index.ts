@@ -4,7 +4,7 @@ import { createHmac, timingSafeEqual } from "crypto";
 import type { Tracer, VerifyWebhookOptions, WebhookConfig } from "./types.js";
 import { DEFAULT_MAX_AGE_MS, DEFAULT_CLOCK_SKEW_MS } from "./types.js";
 export { verifyWebhookEdge } from "./edge.js";
-export type { Span, Tracer, VerifyWebhookOptions, WebhookConfig } from "./types.js";
+export type { Span, Tracer, VerifierSignatureVersion, VerifyWebhookOptions, WebhookConfig } from "./types.js";
 
 type ResolvedWebhookConfig = Omit<Required<WebhookConfig>, "url" | "tracer" | "urlValidator"> & {
   urls: string[];
