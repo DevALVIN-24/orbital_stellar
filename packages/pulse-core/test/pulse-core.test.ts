@@ -18,6 +18,7 @@ import type {
   RawHorizonAllowTrust,
   RawHorizonSetTrustLineFlags,
   RawSorobanEvent,
+  RawHorizonContractEmitted,
 } from "../src/index.js";
 
 type StreamHandlers = {
@@ -2235,6 +2236,14 @@ describe("pulse-core EventEngine", () => {
           case "trustline.authorized":
           case "trustline.deauthorized": {
             const raw: RawHorizonAllowTrust | RawHorizonSetTrustLineFlags | undefined = event.raw;
+            break;
+          }
+          case "contract.emitted": {
+            const raw = event.raw;
+            break;
+          }
+          case "contract.invoked": {
+            const raw = event.raw;
             break;
           }
           default: {
