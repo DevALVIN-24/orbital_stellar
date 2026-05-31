@@ -138,3 +138,10 @@ export function useStellarActivity(
     initialEvent: options?.initialEvent,
   });
 }
+
+export {
+  StellarConnectionStatus,
+  type StellarConnectionStatusLabels,
+  type StellarConnectionStatusProps,
+  type StellarConnectionStatusState,
+} from "./StellarConnectionStatus.js";
