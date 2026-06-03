@@ -98,6 +98,7 @@ export class EventEngine {
   private reconnectAttempt = 0;
   private pendingReconnectSuccessAttempt: number | null = null;
   private readonly reconnectConfig: Required<ReconnectConfig>;
+  private readonly network: Network;
   private isRunning = false;
   private filters: Map<string, (event: NormalizedEvent) => boolean> = new Map();
   // Waiters for contract subscription activation: map contractId -> array of waiters
@@ -150,6 +151,7 @@ export class EventEngine {
       ...config.reconnect,
     };
     this.log = config.logger ?? noop;
+    this.network = config.network;
     this.cursorStore = config.cursorStore;
     this.streamKey = config.streamKey ?? "pulse-core-cursor";
     this.cursorFailureThreshold = config.cursorFailureThreshold ?? 5;
@@ -371,6 +373,30 @@ export class EventEngine {
         }
       );
       return false;
+    }
+
+    // Detect Soroban RPC / network drift if a cached network is available.
+    // This check is intentionally synchronous so any mismatch can be reported
+    // immediately before opening subscriptions. Tests populate the SorobanRpcClient cache.
+    try {
+      const { SorobanRpcClient } = require("./SorobanRpcClient.js");
+      const cached = SorobanRpcClient.getCachedNetwork();
+      if (cached) {
+        // eslint-disable-next-line @typescript-eslint/no-var-requires
+        const { NETWORK_PASSPHRASES } = require("./index.js");
+        const expected = NETWORK_PASSPHRASES[this.network];
+        const actual = cached.passphrase;
+        if (actual !== expected) {
+          // eslint-disable-next-line @typescript-eslint/no-var-requires
+          const { NetworkMismatchError } = require("./errors.js");
+          throw new NetworkMismatchError(expected, actual);
+        }
+      }
+    } catch (e) {
+      if (e instanceof Error && e.name === "NetworkMismatchError") {
+        throw e;
+      }
+      // Otherwise ignore missing cache or other non-fatal failures — no drift detection available.
     }
 
     this.openStream(false);
