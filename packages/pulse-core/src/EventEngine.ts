@@ -123,11 +123,12 @@ export class EventEngine {
   private isCursorStoreUnhealthy = false;
   private pausedSources = new Set<"horizon" | "soroban">();
 
+
   /**
    * Creates a new EventEngine instance.
    * @param config - The core configuration for the engine.
    */
-  constructor(config: CoreConfig) {
+  constructor(config: CoreConfig & { soroban?: { rpcUrl: string; rpcHeaders?: Record<string, string>; pollIntervalMs?: number; startLedgerLookback?: number } }) {
     let horizonUrl: string;
     if (config.horizonUrl !== undefined) {
       try {
@@ -152,6 +153,7 @@ export class EventEngine {
       ...config.reconnect,
     };
     this.log = config.logger ?? noop;
+<<<<<<< HEAD
     this.network = config.network;
     this.cursorStore = config.cursorStore;
     this.streamKey = config.streamKey ?? "pulse-core-cursor";
@@ -333,8 +335,15 @@ export class EventEngine {
       this.contractRegistry.delete(id);
       this.subscriptionNames.delete(id);
       this.filters.delete(id);
+      if (this.contractRegistry.size === 0 && this.sorobanSubscriber) {
+        this.sorobanSubscriber.stop();
+      }
     });
     this.contractRegistry.set(id, { watcher, filters });
+    
+    if (this.isRunning && this.sorobanSubscriber) {
+      this.sorobanSubscriber.start();
+    }
     return watcher;
   }
 
@@ -459,6 +468,9 @@ export class EventEngine {
     }
 
     this.openStream(false);
+    if (this.contractRegistry.size > 0 && this.sorobanSubscriber) {
+      this.sorobanSubscriber.start();
+    }
     return true;
   }
 
@@ -528,6 +540,10 @@ export class EventEngine {
     this.horizonCursor = undefined;
     this.pausedSources.clear();
 
+    if (this.sorobanSubscriber) {
+      this.sorobanSubscriber.stop();
+    }
+
     this.notifyWatchers("engine.stopped", {
       type: "engine.stopped",
       attempt: 0,
@@ -548,8 +564,8 @@ export class EventEngine {
     };
 
     const soroban = {
-      running: false,
-      lastEventAt: null,
+      running: this.sorobanSubscriber?.isRunning ?? false,
+      lastEventAt: this.sorobanSubscriber?.lastEventAt ?? null,
       reconnectAttempt: 0,
     };
 
