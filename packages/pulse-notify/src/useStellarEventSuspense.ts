@@ -244,7 +244,6 @@ export function useStellarEventSuspense<
       }
       resourceKeyRef.current = null;
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [resourceKey]);
 
   // --- Suspense protocol ---

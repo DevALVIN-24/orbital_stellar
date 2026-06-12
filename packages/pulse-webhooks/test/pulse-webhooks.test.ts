@@ -403,7 +403,7 @@ describe("pulse-webhooks WebhookDelivery", () => {
     it("uses exponentialJittered strategy (default) with deterministic RNG", async () => {
       const { exponentialJittered } = await import("../src/backoff.js");
 
-      let rngValue = 0.5;
+      const rngValue = 0.5;
       const fixedRandom = () => rngValue;
 
       expect(exponentialJittered(1, fixedRandom)).toBe(500); // 2^0 * 1000 * 0.5 = 500
@@ -415,7 +415,7 @@ describe("pulse-webhooks WebhookDelivery", () => {
     it("uses linear strategy with deterministic RNG", async () => {
       const { linear } = await import("../src/backoff.js");
 
-      let rngValue = 0.5;
+      const rngValue = 0.5;
       const fixedRandom = () => rngValue;
 
       expect(linear(1, fixedRandom)).toBe(500); // 1 * 1000 * 0.5 = 500
@@ -427,7 +427,7 @@ describe("pulse-webhooks WebhookDelivery", () => {
     it("uses cappedExponential strategy with deterministic RNG", async () => {
       const { cappedExponential } = await import("../src/backoff.js");
 
-      let rngValue = 0.5;
+      const rngValue = 0.5;
       const fixedRandom = () => rngValue;
 
       expect(cappedExponential(1, fixedRandom)).toBe(500); // min(2^0 * 1000, 30000) * 0.5 = 500
@@ -442,7 +442,7 @@ describe("pulse-webhooks WebhookDelivery", () => {
     it("uses constant strategy with deterministic RNG", async () => {
       const { constant } = await import("../src/backoff.js");
 
-      let rngValue = 0.5;
+      const rngValue = 0.5;
       const fixedRandom = () => rngValue;
 
       expect(constant(1, fixedRandom)).toBe(500); // 1000 * 0.5 = 500
@@ -455,7 +455,7 @@ describe("pulse-webhooks WebhookDelivery", () => {
       const fetchMock = vi.fn().mockRejectedValue(new Error("network down"));
       vi.stubGlobal("fetch", fetchMock);
 
-      let rngValue = 0.75;
+      const rngValue = 0.75;
       const fixedRandom = () => rngValue;
 
       const customStrategy: (attempt: number, rng: () => number) => number = (

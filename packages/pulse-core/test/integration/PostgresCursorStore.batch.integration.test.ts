@@ -19,7 +19,7 @@ describe("PostgresCursorStore batch integration tests", () => {
   const connectionString =
     process.env.PG_TEST_URL || "postgres://postgres:postgres@localhost:5432/postgres";
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+   
   let pool: any;
   let store: PostgresCursorStore;
 

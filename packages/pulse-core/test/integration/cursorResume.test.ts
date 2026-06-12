@@ -16,7 +16,7 @@ const isIntegration = process.env.INTEGRATION_TESTS === "true";
 if (isIntegration) {
   try {
     // lazy-load pg and PostgresCursorStore if integration tests are enabled
-    // eslint-disable-next-line @typescript-eslint/no-var-requires
+     
     const pg = require("pg");
     pgPool = pg.Pool;
     PostgresCursorStore = require("../../src/PostgresCursorStore.js").PostgresCursorStore;
