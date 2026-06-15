@@ -109,7 +109,7 @@ const DEFAULT_RECONNECT: Required<ReconnectConfig> = {
 
 const STELLAR_MAX_TRUSTLINE_LIMIT = "922337203685.4775807";
 
-const noop: Logger = { info: () => { }, warn: () => { }, error: () => { } };
+const noop: Logger = { info: () => {}, warn: () => {}, error: () => {} };
 
 /**
  * Produces a stable, order-independent string key for a ContractFilter array.
