@@ -53,7 +53,7 @@ This package's own `test/connectionPool.test.ts` shows the `EventSource` polyfil
 ```ts
 import { http, HttpResponse } from "msw";
 import { setupServer } from "msw/node";
-import { renderHook, act, waitFor } from "@testing-library/react";
+import { renderHook, act } from "@testing-library/react";
 import { useStellarActivity } from "@orbital-stellar/pulse-notify";
 
 class MockEventSource {
@@ -94,9 +94,11 @@ afterEach(() => server.resetHandlers());
 afterAll(() => server.close());
 
 test("receives events from EventSource", async () => {
-  const { result } = renderHook(() =>
+  const { result, waitForNextUpdate } = renderHook(() =>
     useStellarActivity("https://events.example.com", "GABC")
   );
+
+  await waitForNextUpdate();
 
   act(() => {
     MockEventSource.instances[0]?.emit({
@@ -108,9 +110,7 @@ test("receives events from EventSource", async () => {
     });
   });
 
-  await waitFor(() => {
-    expect(result.current.event?.type).toBe("payment.received");
-  });
+  expect(result.current.event?.type).toBe("payment.received");
 });
 ```
 

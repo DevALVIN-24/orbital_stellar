@@ -1,11 +1,15 @@
-import { DeadLetterStore, type DeadLetterEntry, type DeadLetterFilter } from './MemoryDeadLetterStore.js';
+import {
+  DeadLetterStore,
+  type DeadLetterEntry,
+  type DeadLetterFilter,
+} from "./MemoryDeadLetterStore.js";
 
 /**
  * List DLQ entries with optional filters and output each as a line‑delimited JSON string.
  */
 export function listDLQ(
   store: DeadLetterStore,
-  options: { url?: string; since?: string; limit?: number }
+  options: { url?: string; since?: string; limit?: number },
 ): void {
   const filter: DeadLetterFilter = {};
   if (options.url) filter.url = options.url;
