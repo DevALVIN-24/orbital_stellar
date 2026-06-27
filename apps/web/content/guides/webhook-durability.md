@@ -1,161 +1,79 @@
-# Webhook Durability Guide
+# Durable Webhook Delivery Guide
+
+This guide explains how to achieve durable webhook delivery using the **RetryQueue** and **DeadLetterStore** abstractions provided by M4. It covers the available implementations, inspection and replay workflows, and what happens when a process restarts.
+
+---
 
 ## Overview
 
-Durable webhook delivery is essential for reliable event-driven systems. This guide explains the retry and dead‑letter mechanisms provided by **M4** and shows how to use the concrete implementations:
-- `RetryQueue`
-- `RedisRetryQueue`
-- `SqsRetryQueue`
-- `DeadLetterStore`
+- **`RetryQueue`** – Interface for enqueuing webhook delivery attempts that should be retried later.
+- **`DeadLetterStore`** – Interface for persisting permanently failed webhook deliveries (the dead‑letter queue, DLQ).
 
-It also demonstrates how to inspect and replay dead‑lettered events and compares in‑process vs durable retries.
+Both interfaces enable reliable, durable delivery irrespective of process crashes or restarts.
 
 ---
 
-## 1. RetryQueue Interface
+## Implementations
 
-```go
-type RetryQueue interface {
-    // Enqueue puts a webhook payload onto the queue for later retry.
-    Enqueue(ctx context.Context, payload WebhookPayload) error
+| Interface | Implementation | Storage Backend | Typical Use‑Case |
+|-----------|----------------|----------------|-----------------|
+| `RetryQueue` | `RedisRetryQueue` | Redis (list + sorted set) | Low‑latency, in‑memory retry with persistence via Redis AOF/RDB |
+| `RetryQueue` | `SqsRetryQueue` | AWS SQS (standard queue) | Cloud‑native, highly‑available retry with built‑in dead‑letter support |
+| `DeadLetterStore` | `RedisDeadLetterStore` | Redis hash | Simple DLQ for development / self‑hosted environments |
+| `DeadLetterStore` | `SqsDeadLetterStore` | AWS SQS (DLQ) | Production‑grade DLQ with visibility timeout & redrive policy |
 
-    // Dequeue fetches the next payload that should be retried. It blocks until a payload is available or the context is cancelled.
-    Dequeue(ctx context.Context) (WebhookPayload, error)
+---
 
-    // Ack acknowledges successful processing of a payload.
-    Ack(ctx context.Context, id string) error
+## Workflow
 
-    // Nack registers a failure; the payload will be retried according to the implementation’s policy.
-    Nack(ctx context.Context, id string, err error) error
-}
+1. **Send Webhook** – Application attempts to POST to the target URL.
+2. **Success** – If the request returns `2xx`, the job is considered complete.
+3. **Transient Failure** – Non‑2xx response or network error → enqueue a **retry** in the `RetryQueue`.
+4. **Retry Processor** – Background worker polls the queue, re‑attempts delivery, and respects exponential back‑off.
+5. **Exhausted Retries** – After the maximum retry count, the payload moves to the `DeadLetterStore`.
+6. **DLQ Inspection** – Use the **DLQ CLI** (`dlq-cli`) or custom UI to list, filter, and view failed payloads.
+7. **Replay** – Select one or more dead‑letter entries and push them back onto the `RetryQueue` for re‑processing.
+
+---
+
+## DLQ Inspection & Replay (Redis Example)
+
+```bash
+# List dead‑letter entries (Redis hash key: dlq:store)
+redis-cli HKEYS dlq:store
+
+# View a specific entry by its ID
+redis-cli HGET dlq:store <entry-id>
+
+# Replay an entry (push back to the retry queue)
+redis-cli RPUSH retry:queue <payload-json>
 ```
 
-`RetryQueue` abstracts the retry storage and policy. Implementations differ in durability and scaling characteristics.
+The same concepts apply to SQS; replace the `redis-cli` commands with `aws sqs receive-message`, `aws sqs send-message`, etc.
 
 ---
 
-## 2. RedisRetryQueue
+## What Happens on Process Restart?
 
-### 2.1 How it works
-- Uses a Redis **sorted set** keyed by `<queue>:retry` where the score is the **next retry timestamp**.
-- When a payload fails, `Nack` adds the payload with a back‑off schedule (exponential by default).
-- A background worker calls `Dequeue` which runs a `ZRANGEBYSCORE` query for items whose timestamp ≤ `now`.
-- Successful processing triggers `Ack`, which removes the item from the set.
-
-### 2.2 End‑to‑end example
-```go
-// Initialize the queue
-rdb := redis.NewClient(&redis.Options{Addr: "localhost:6379"})
-queue := redisqueue.NewRedisRetryQueue(rdb, "webhook", redisqueue.WithBackoff(redisqueue.ExponentialBackoff(5*time.Second)))
-
-// Enqueue a webhook
-payload := webhook.WebhookPayload{ID: "msg-123", URL: "https://example.com/hook", Body: []byte(`{"event":"order.created"}`)}
-if err := queue.Enqueue(context.Background(), payload); err != nil { log.Fatalf("enqueue failed: %v", err) }
-
-// Worker loop
-for {
-    msg, err := queue.Dequeue(context.Background())
-    if err != nil { log.Printf("dequeue error: %v", err); continue }
-    if err := sendWebhook(msg); err != nil {
-        // Register failure – it will be retried according to back‑off
-        _ = queue.Nack(context.Background(), msg.ID, err)
-        continue
-    }
-    _ = queue.Ack(context.Background(), msg.ID)
-}
-```
-
-> **Tip** – Run the worker as a separate process or a container; Redis guarantees durability across restarts.
+| Scenario | In‑Process Retry (no durable queue) | **Durable Retry (`RetryQueue`)** |
+|----------|--------------------------------------|-----------------------------------|
+| Process crashes before a retry is attempted | All pending retries are lost → webhook may never be delivered. | Pending retries are persisted in Redis/SQS. On restart the worker resumes processing from the stored queue. |
+| Process restarts while retries are in‑flight | In‑flight attempts may be duplicated or abandoned. | Each retry entry records a **next‑attempt timestamp**; duplicate attempts are avoided by idempotent payload handling. |
+| Max‑retry limit reached before restart | Failure handling is implementation‑specific; often ends in silent loss. | Payload automatically moves to `DeadLetterStore`, guaranteeing visibility for manual inspection and replay. |
 
 ---
 
-## 3. SqsRetryQueue
+## TL;DR
 
-- Stores each retry attempt as an **SQS message** in a dedicated retry queue.
-- Visibility timeout controls the back‑off; after the timeout expires the message becomes visible again.
-- `Nack` re‑queues the message with an increased delay using `ChangeMessageVisibility`.
-- `Ack` deletes the message.
-
-**When to use** – High‑throughput cloud‑native environments where AWS SQS is already part of the stack.
+- Use **`RedisRetryQueue`** for local/dev environments and **`SqsRetryQueue`** for production cloud deployments.
+- Leverage **`DeadLetterStore`** to capture permanently failed deliveries.
+- The provided **DLQ CLI** (`dlq-cli`) enables inspection and replay without writing custom code.
+- Durable queues ensure no webhook is lost across restarts.
 
 ---
 
-## 4. DeadLetterStore Interface
+## Further Reading
 
-```go
-type DeadLetterStore interface {
-    // Store persists a failed payload together with the error and retry attempts.
-    Store(ctx context.Context, payload WebhookPayload, err error) error
-
-    // List returns the IDs of all dead‑lettered messages.
-    List(ctx context.Context) ([]string, error)
-
-    // Get retrieves a specific dead‑letter entry.
-    Get(ctx context.Context, id string) (DeadLetterEntry, error)
-
-    // Replay moves a dead‑letter entry back onto a RetryQueue for another attempt.
-    Replay(ctx context.Context, id string, target RetryQueue) error
-}
-```
-
-M4 ships a **RedisDeadLetterStore** and an **S3DeadLetterStore** implementation. Both expose a simple REST endpoint for UI inspection.
-
----
-
-## 5. DLQ Inspection & Replay Flow
-
-1. **Inspect** – UI or CLI calls `DeadLetterStore.List` → displays IDs and basic metadata.
-2. **View details** – `DeadLetterStore.Get(id)` returns payload, error, and attempt count.
-3. **Replay** – User selects a message and clicks *Replay* → `DeadLetterStore.Replay(id, retryQueue)` moves it back to the appropriate `RetryQueue`.
-4. **Monitor** – After replay, the message appears in the normal processing flow and can be `Ack`‑ed or `Nack`‑ed again.
-
-The following diagram visualises the flow:
-
-```mermaid
-flowchart TD
-    subgraph Process
-        A[Webhook Received] --> B{Delivery Success?}
-        B -- Yes --> C[Ack]
-        B -- No --> D[Enqueue to RetryQueue]
-    end
-    D --> E[Retry Worker]
-    E --> F{Retry Success?}
-    F -- Yes --> C
-    F -- No --> G[Store in DeadLetterStore]
-    G --> H[DLQ UI]
-    H --> I{{User Action}}
-    I -- Replay --> D
-```
-
----
-
-## 6. What Happens on Process Restart?
-
-| Scenario                     | In‑process retries (no durable queue) | Durable retries (`RedisRetryQueue` / `SqsRetryQueue`) |
-|------------------------------|---------------------------------------|--------------------------------------------------|
-| Process crashes while handling a webhook | All pending retries are **lost** – the payload is never retried. | Pending retries remain in Redis/SQS; the worker can resume after restart. |
-| Worker restarts after a back‑off period | No knowledge of which payloads need another attempt. | The queue automatically yields the next due payload based on the stored timestamp or visibility timeout. |
-| Dead‑lettered payloads | No persistent storage – information is gone. | Stored in `DeadLetterStore`; can be inspected and replayed later. |
-
----
-
-## 7. Full Redis Example (End‑to‑End)
-
-1. **Deploy Redis** – `docker run -p 6379:6379 redis:7-alpine`
-2. **Configure the queue** – See the code snippet in section 2.2.
-3. **Run the worker** – `go run ./cmd/webhook-worker`
-4. **Trigger a webhook** – POST to the service; on failure, the payload is enqueued.
-5. **Inspect DLQ** – `GET /admin/dlq` (provided by the admin UI) lists failed events.
-6. **Replay** – Click *Replay* next to an entry; the worker will attempt delivery again.
-
----
-
-## 8. Next Steps
-
-- Add unit tests for each implementation (`RedisRetryQueue`, `SqsRetryQueue`, `RedisDeadLetterStore`).
-- Extend the admin UI to filter DLQ entries by error type.
-- Document monitoring metrics (retry count, DLQ size, replay success rate).
-
----
-
-*This guide is live under `apps/web/content/guides/webhook-durability.md`.*
+- [M4 RetryQueue Interface Documentation](../reference/retryqueue.md)
+- [M4 DeadLetterStore Interface Documentation](../reference/deadletterstore.md)
+- [DLQ CLI – Inspection & Replay](../cli/dlq-cli.md)
