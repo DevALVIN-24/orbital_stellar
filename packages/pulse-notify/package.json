@@ -17,10 +17,6 @@
     "./devtools": {
       "types": "./dist/devtools.d.ts",
       "default": "./dist/devtools.js"
-    },
-    "./vitePlugin": {
-      "types": "./dist/vitePlugin.d.ts",
-      "default": "./dist/vitePlugin.js"
     }
   },
   "files": [
